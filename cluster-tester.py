@@ -1,21 +1,13 @@
 from dtaidistance import dtw
+from dtaidistance import dtw_visualisation as dtwvis
 from dtaidistance.clustering import KMeans
-#from tslearn.clustering import KMeans
 
 import numpy as np
-#from functorch.dim import use_c
 from matplotlib import pyplot as plt
 import matplotlib.image as mpimg
 
 signals = np.load('signals/signals.npy')
 masks = np.load('signals/masks.npy')
-
-v_to_del = {1: 'p', 2: 'qrs', 3: 't'}
-wave_type_to_color = {
-    "p": "yellow",
-    "qrs": "red",
-    "t": "green"
-}
 
 def extract_segments(array, mask):
     current_segment = []
@@ -45,12 +37,6 @@ segments = {}
 for i in range(5):
     extract_segments(signals[i, 1, :], masks[i, 1, :])
 
-'''
-for i in range(len(segments[2])):
-    plt.plot(segments[2][i])
-plt.show()
-'''
-
 # Теперь кластеризация
 series = segments[2]
 
@@ -63,52 +49,19 @@ for i in range(len(series)):
     while len(series[i]) < max:
         series[i].append(0.0)
 
-'''
-for i in range(len(series)):
-    plt.plot(series[i])
-plt.show()
-'''
 
 series=np.array(series)
 
 '''
-from dtaidistance import clustering
-# Custom Hierarchical clustering
-model1 = clustering.Hierarchical(dtw.distance_matrix_fast, {})
-cluster_idx = model1.fit(series)
-# Augment Hierarchical object to keep track of the full tree
-model2 = clustering.HierarchicalTree(model1)
-cluster_idx = model2.fit(series)
-# SciPy linkage clustering
-model3 = clustering.LinkageTree(dtw.distance_matrix_fast, {})
-cluster_idx = model3.fit(series)
-
-model2.plot()
-plt.show()
-
-
-fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(10, 10))
-show_ts_label = lambda idx: "ts-" + str(idx)
-model2.plot("hierarchy.png", axes=ax, show_ts_label=show_ts_label,
-           show_tr_label=True, ts_label_margin=-10,
-           ts_left_margin=10, ts_sample_length=1)
-
-
-img = mpimg.imread('hierarchy.png')
-imgplot = plt.imshow(img)
-plt.show()
-'''
-
-model = KMeans(k=4, max_it=10, max_dba_it=10, dists_options={"window": 40})
+model = KMeans(k=3, max_it=15, max_dba_it=15, dists_options={"window": 40})
 cluster_idx, performed_it = model.fit(series, use_parallel=False)
-
 centers  = model.kmeansplusplus_centers(series=series)
+
+fig, axs = plt.subplots(len(cluster_idx), 2)
 
 for i in range(len(cluster_idx)):
     cluster_idx[i] = list(cluster_idx[i])
 print(cluster_idx, performed_it)
-
-fig, axs = plt.subplots(len(cluster_idx), 2)
 
 for i in range(len(cluster_idx)):
     for j in range(len(cluster_idx[i])):
@@ -116,6 +69,33 @@ for i in range(len(cluster_idx)):
     axs[i, 1].plot(centers[i])
 
 plt.show()
+'''
 
 
+# Собираем всех по dtw
+s1 = series[38]
+s2 = series[0]
+s3 = series[10]
 
+plt.plot(s1, c='b')
+plt.plot(s2, c='orange')
+plt.plot(s3, c='g')
+plt.show()
+
+clusters = {0:[series[38]], 1:[series[0]], 2:[series[10]]}
+
+for i in range(len(series)):
+    if i not in (0, 10, 38):
+        distances = [dtw.distance(series[i], clusters[0][0]),
+                     dtw.distance(series[i], clusters[1][0]),
+                     dtw.distance(series[i], clusters[2][0])]
+        clusters[distances.index(min(distances))].append(series[i])
+
+fig, axs = plt.subplots(len(clusters), 2)
+
+for i in range(len(clusters)):
+    for j in range(len(clusters[i])):
+        axs[i, 0].plot(series[j])
+    axs[i, 1].plot(clusters[i][0])
+
+plt.show()
