@@ -6,6 +6,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 import matplotlib.image as mpimg
 
+from sklearn.utils import shuffle
+
 signals = np.load('signals/signals.npy')
 masks = np.load('signals/masks.npy')
 
@@ -63,6 +65,7 @@ for i in range(len(series)):
 
 series=np.array(series)
 
+'''
 # Кластеризация через KMeans
 
 model = KMeans(k=3, max_it=15, max_dba_it=15, dists_options={"window": 40})
@@ -82,7 +85,7 @@ for i in range(len(cluster_idx)):
 
 plt.show()
 
-
+'''
 
 # Собираем всех по dtw
 potential_centroids  = [0, 101, -15]
@@ -98,21 +101,44 @@ plt.plot(cut_end_zeros(s3), c='g')
 plt.show()
 
 
-clusters = {0:[s1], 1:[s2], 2:[s3]}
+clusters = [[], [], []]
+distances_to_centroid = [[], [], []]
 
 for i in range(len(series)):
     if i not in (potential_centroids):
-        distances = [dtw.distance(series[i], clusters[0][0]),
-                     dtw.distance(series[i], clusters[1][0]),
-                     dtw.distance(series[i], clusters[2][0])]
-        clusters[distances.index(min(distances))].append(series[i])
+        distances = [dtw.distance(series[i], s1),
+                     dtw.distance(series[i], s2),
+                     dtw.distance(series[i], s3)]
+        cluster_num = distances.index(min(distances))
+        clusters[cluster_num].append(series[i])
+        distances_to_centroid[cluster_num].append(min(distances))
 
-fig, axs = plt.subplots(len(clusters), 2)
+potential_centroids = [s1,s2,s3]
+
 
 for i in range(len(clusters)):
-    for j in range(0, len(clusters[i]), 15):
-        plot_series = cut_end_zeros(series[j])
-        axs[i, 0].plot(plot_series)
-    axs[i, 1].plot(cut_end_zeros(clusters[i][0]))
+    clusters[i], distances_to_centroid[i] = shuffle(clusters[i], distances_to_centroid[i], random_state=1)
 
+    fig, axs = plt.subplots(5, 5, figsize=(10, 10))
+    fig.suptitle(f'Cluster number {i + 1}')
+
+    x = 0
+    y = 0
+    j = 0
+    while (y<5):
+        if x==0 and y==0:
+            axs[0,0].set_title('Centroid')
+            axs[0,0].plot(cut_end_zeros(potential_centroids[i]), c = 'orange')
+            x+=1
+            j += 1
+        if j<len(clusters[i]):
+            axs[x,y].set_title(f'{distances_to_centroid[i][j]:.3f}')
+            axs[x,y].plot(cut_end_zeros(clusters[i][j]), c='black', linewidth = 1)
+            j+=1
+        x+=1
+        if x == 5:
+            x = 0
+            y+=1
+    fig.tight_layout()
+    fig.savefig(f'cluster{i+1}.png')
 plt.show()
